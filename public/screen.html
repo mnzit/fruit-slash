@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍉 Fruit Slash — Screen</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #10121a; font-family: system-ui, -apple-system, sans-serif; }
+  #game { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #lobby {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; color: #fff;
+    background: radial-gradient(circle at 50% 30%, rgba(30,36,56,0.72) 0%, rgba(16,18,26,0.72) 70%);
+    z-index: 10;
+  }
+  #lobby h1 { font-size: 56px; letter-spacing: 2px; }
+  #lobby .code { font-size: 64px; font-weight: 800; letter-spacing: 12px; color: #ffd23f; }
+  #lobby .url { font-size: 22px; color: #9fb3ff; word-break: break-all; text-align: center; padding: 0 30px; }
+  #qr { background: #fff; padding: 12px; border-radius: 12px; }
+  #players-lobby { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 80%; }
+  .ptag { padding: 8px 18px; border-radius: 999px; font-weight: 700; font-size: 20px; color: #10121a; }
+  #start-hint { color: #8b93ad; font-size: 18px; }
+  button#start {
+    font-size: 26px; font-weight: 800; padding: 14px 46px; border: none; border-radius: 12px;
+    background: #4ade80; color: #08210f; cursor: pointer;
+  }
+  button#start:disabled { background: #2a3145; color: #666; cursor: default; }
+  #gameover {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; color: #fff;
+    background: rgba(16, 18, 26, 0.88); z-index: 20; text-align: center;
+  }
+  #gameover.active { display: flex; }
+  #gameover h1 { font-size: 64px; color: #ff4d4d; }
+  #gameover .culprit { font-size: 24px; color: #ffb020; }
+  #final-scores { display: flex; flex-direction: column; gap: 8px; font-size: 26px; font-weight: 700; }
+  #final-scores .winner { font-size: 34px; }
+  button#again {
+    font-size: 26px; font-weight: 800; padding: 14px 46px; border: none; border-radius: 12px;
+    background: #4ade80; color: #08210f; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="lobby">
+  <h1>🍉 Fruit Slash</h1>
+  <div>Scan with your phone to join:</div>
+  <canvas id="qr" width="220" height="220"></canvas>
+  <div class="url" id="join-url"></div>
+  <div>Room code: <span class="code" id="room-code">····</span></div>
+  <div id="players-lobby"></div>
+  <button id="start" disabled>Waiting for players…</button>
+  <div id="start-hint">Phones connect over WebRTC — accept the certificate warning on each phone first.</div>
+</div>
+<div id="gameover">
+  <h1 id="go-title">💥 GAME OVER</h1>
+  <div class="culprit" id="culprit"></div>
+  <div id="final-scores"></div>
+  <button id="again">Play again</button>
+</div>
+<script src="vendor/qrcode.js"></script>
+<script src="audio.js"></script>
+<script src="screen.js"></script>
+</body>
+</html>

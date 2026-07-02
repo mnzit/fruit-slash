@@ -1,0 +1,14 @@
+{
+  "name": "fruit-slash",
+  "version": "1.0.0",
+  "description": "Multiplayer Fruit Ninja over WebRTC — your phone is the knife",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "qrcode-generator": "^2.0.4",
+    "selfsigned": "^2.4.1",
+    "ws": "^8.18.0"
+  }
+}

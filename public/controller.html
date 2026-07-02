@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🔪 Fruit Slash — Knife</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: #10121a; color: #fff;
+    font-family: system-ui, -apple-system, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px; padding: 24px; text-align: center; }
+  .screen.active { display: flex; }
+  h1 { font-size: 34px; }
+  input {
+    font-size: 22px; padding: 14px; border-radius: 12px; border: 2px solid #384060;
+    background: #1a2035; color: #fff; width: 100%; max-width: 300px; text-align: center;
+  }
+  input#room { letter-spacing: 8px; text-transform: uppercase; font-weight: 800; }
+  button {
+    font-size: 22px; font-weight: 800; padding: 16px 40px; border: none; border-radius: 14px;
+    background: #4ade80; color: #08210f; cursor: pointer; max-width: 300px; width: 100%;
+  }
+  button.secondary { background: #384060; color: #fff; }
+  #status { color: #8b93ad; font-size: 16px; min-height: 22px; }
+  #play-screen { background: radial-gradient(circle at 50% 20%, #1e2438 0%, #10121a 70%); justify-content: space-between; padding: 40px 24px; }
+  #knife { font-size: 90px; transition: transform 0.05s; }
+  #hint { font-size: 20px; color: #9fb3ff; }
+  #subhint { font-size: 15px; color: #8b93ad; line-height: 1.5; }
+  #recenter { max-width: 220px; }
+  .flash-red { animation: flashr 0.4s; }
+  @keyframes flashr { 0% { background: #7a1020; } 100% { background: #10121a; } }
+</style>
+</head>
+<body>
+
+<div class="screen active" id="join-screen">
+  <h1>🔪 Fruit Slash</h1>
+  <input id="name" placeholder="Your name" maxlength="12" autocomplete="off">
+  <input id="room" placeholder="ROOM" maxlength="4" autocomplete="off">
+  <button id="join">Join game</button>
+  <div id="status"></div>
+</div>
+
+<div class="screen" id="calibrate-screen">
+  <h1>🔪 → 🖥️</h1>
+  <div id="cal-text">Grip your phone <b>like a knife</b> — flat in your fist, top edge aimed at the <b>center of the screen</b> — then tap the button.</div>
+  <button id="calibrate">Point &amp; calibrate</button>
+  <button id="touch-mode" class="secondary">No motion? Use touch pad instead</button>
+  <div id="status2"></div>
+</div>
+
+<div class="screen" id="play-screen">
+  <div id="hint">Swing your phone to slice! 🍉</div>
+  <div id="knife">🔪</div>
+  <div id="subhint">Aim at the ✛ on the big screen and<br><b>tap here</b> any time to re-center</div>
+  <button id="recenter" class="secondary">Re-center aim</button>
+</div>
+
+<script src="controller.js"></script>
+</body>
+</html>
