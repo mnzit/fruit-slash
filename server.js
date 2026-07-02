@@ -52,7 +52,13 @@ const MIME = {
   '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
 };
 
-const server = https.createServer(loadOrCreateCert(), (req, res) => {
+// On cloud hosts (Render/Railway/Fly), the platform terminates TLS at its
+// proxy, so we serve plain HTTP there. Locally we self-sign HTTPS because
+// phone motion sensors require a secure origin.
+const USE_TLS = process.env.TLS !== 'false' &&
+  !process.env.RENDER && !process.env.RAILWAY_ENVIRONMENT && !process.env.FLY_APP_NAME;
+
+function requestHandler(req, res) {
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/') urlPath = '/screen.html';
   if (urlPath === '/play') urlPath = '/controller.html';
@@ -67,7 +73,11 @@ const server = https.createServer(loadOrCreateCert(), (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
     res.end(data);
   });
-});
+}
+
+const server = USE_TLS
+  ? https.createServer(loadOrCreateCert(), requestHandler)
+  : require('http').createServer(requestHandler);
 
 // ---- Signaling ----
 // rooms: code -> { screen: ws|null, controllers: Map<id, ws> }
@@ -134,12 +144,16 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
-  const ips = getLanIPs();
   console.log('\n🍉 Fruit Slash running!');
-  console.log(`\n  Screen (open on laptop/TV):`);
-  console.log(`    https://localhost:${PORT}/`);
-  for (const ip of ips) console.log(`    https://${ip}:${PORT}/`);
-  console.log(`\n  Phones join via the QR code / room code shown on the screen.`);
-  console.log(`\n  Note: the certificate is self-signed — accept the browser warning`);
-  console.log(`  on BOTH the laptop and each phone.\n`);
+  if (USE_TLS) {
+    const ips = getLanIPs();
+    console.log(`\n  Screen (open on laptop/TV):`);
+    console.log(`    https://localhost:${PORT}/`);
+    for (const ip of ips) console.log(`    https://${ip}:${PORT}/`);
+    console.log(`\n  Phones join via the QR code / room code shown on the screen.`);
+    console.log(`\n  Note: the certificate is self-signed — accept the browser warning`);
+    console.log(`  on BOTH the laptop and each phone.\n`);
+  } else {
+    console.log(`  Plain-HTTP mode on port ${PORT} (TLS handled by the hosting platform).\n`);
+  }
 });

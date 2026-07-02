@@ -71,7 +71,7 @@ let nextFrenzy = 0;  // when the next frenzy kicks off
 
 // ---- Signaling ----
 function connectSignaling() {
-  ws = new WebSocket(`wss://${location.host}`);
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
   ws.onopen = () => ws.send(JSON.stringify({ type: 'create-room' }));
   ws.onmessage = async (ev) => {
     const msg = JSON.parse(ev.data);

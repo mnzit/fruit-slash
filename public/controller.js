@@ -37,7 +37,7 @@ $('join').addEventListener('click', () => {
   if (room.length !== 4) return ($('status').textContent = 'Enter the 4-letter room code from the screen.');
   $('status').textContent = 'Connecting…';
 
-  ws = new WebSocket(`wss://${location.host}`);
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
   ws.onopen = () => ws.send(JSON.stringify({ type: 'join-room', room, name }));
   ws.onmessage = async (ev) => {
     const msg = JSON.parse(ev.data);
