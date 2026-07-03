@@ -114,6 +114,7 @@ function handleFeedback(msg) {
     phase = 'over';
     $('hint').textContent = 'Point at PLAY AGAIN and tap 👆';
   }
+  if (msg.t === 'recenter') recenter();
 }
 
 // Send a game message to the screen: direct data channel when available,
@@ -226,18 +227,14 @@ function recenter() {
 
 $('recenter').addEventListener('click', recenter);
 
-// Tap anywhere on the play screen: during play it re-centers aim; on the
-// game-over screen it "clicks" whatever the cursor is pointing at.
+// Tap anywhere on the play screen → tell the screen. If the cursor is over an
+// on-screen button (Start / Play again) the screen clicks it; otherwise the
+// screen replies with 'recenter' and the aim is re-centered here.
 document.addEventListener('pointerdown', (e) => {
   if (touchMode) return;
   if (!$('play-screen').classList.contains('active')) return;
   if (e.target.tagName === 'BUTTON') return;
-  if (phase === 'over') {
-    sendGame({ t: 'tap' });
-    if (navigator.vibrate) navigator.vibrate(15);
-  } else {
-    recenter();
-  }
+  sendGame({ t: 'tap' });
 });
 
 // ---- Touch fallback: drag anywhere on the play screen ----

@@ -70,7 +70,11 @@ function requestHandler(req, res) {
   if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end(); }
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); return res.end('Not found'); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream',
+      // Phones cache aggressively; always revalidate so gameplay fixes land.
+      'Cache-Control': 'no-cache',
+    });
     res.end(data);
   });
 }

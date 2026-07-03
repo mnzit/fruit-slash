@@ -170,15 +170,29 @@ function handleInput(p, msg) {
     if (p.trail.length > 24) p.trail.shift();
     if (gameRunning) checkSlices(p, p.prev, p.cursor);
   } else if (msg.t === 'tap') {
-    // On the game-over screen, a phone tap "clicks" whatever the cursor hovers.
-    if (document.getElementById('gameover').classList.contains('active') &&
-        cursorOverButton(p, document.getElementById('again'))) {
-      document.getElementById('again').click();
+    // A tap "clicks" the button the cursor hovers (game-over or lobby);
+    // anywhere else, it means re-center — the phone is told to do so.
+    const btn = activeOverlayButton();
+    if (btn && !btn.disabled && cursorOverButton(p, btn)) {
+      btn.click();
+    } else {
+      send(p, { t: 'recenter' });
     }
   } else if (msg.t === 'ready') {
     p.ready = true;
     updateLobby();
   }
+}
+
+// The clickable button of whichever overlay is currently showing, if any.
+function activeOverlayButton() {
+  if (document.getElementById('gameover').classList.contains('active')) {
+    return document.getElementById('again');
+  }
+  if (document.getElementById('lobby').style.display !== 'none') {
+    return document.getElementById('start');
+  }
+  return null;
 }
 
 function cursorOverButton(p, btn) {
@@ -402,25 +416,28 @@ function gameOver(title, subtitle) {
   for (const p of players.values()) send(p, { t: 'over' });
 }
 
-// While the game-over overlay is up, mirror each player's cursor as a DOM dot
-// above it so they can aim at the Play Again button.
+// While an overlay (lobby or game-over) is up, mirror each player's cursor as
+// a DOM dot above it so they can aim at its button and tap to click.
 function updateOverlayCursors() {
-  const over = document.getElementById('gameover');
-  const btn = document.getElementById('again');
-  if (!over.classList.contains('active')) return;
+  const btn = activeOverlayButton();
   let anyHover = false;
   for (const p of players.values()) {
+    if (!btn) {
+      if (p.dotEl) p.dotEl.style.display = 'none';
+      continue;
+    }
     if (!p.dotEl) {
       p.dotEl = document.createElement('div');
       p.dotEl.className = 'cursor-dot';
       p.dotEl.style.background = p.color;
-      over.appendChild(p.dotEl);
+      document.body.appendChild(p.dotEl);
     }
+    p.dotEl.style.display = 'block';
     p.dotEl.style.left = p.cursor.x / devicePixelRatio + 'px';
     p.dotEl.style.top = p.cursor.y / devicePixelRatio + 'px';
     if (cursorOverButton(p, btn)) anyHover = true;
   }
-  btn.classList.toggle('hover', anyHover);
+  if (btn) btn.classList.toggle('hover', anyHover);
 }
 
 document.getElementById('again').addEventListener('click', () => {
