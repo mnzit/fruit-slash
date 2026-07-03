@@ -52,6 +52,9 @@ function drawBackground(now) {
 }
 
 const PLAYER_COLORS = ['#ff4d6d', '#4ade80', '#38bdf8', '#ffd23f', '#c084fc', '#fb923c', '#f472b6', '#2dd4bf'];
+// Each player also gets a distinct blade-trail pattern, so trails are
+// tellable apart even for colorblind players or similar colors.
+const TRAIL_PATTERNS = ['solid', 'glow', 'dashed', 'dots', 'core'];
 
 // ---- State ----
 const players = new Map(); // id -> {name,color,score,cursor:{x,y},prev:{x,y},trail:[{x,y,t}],pc,dc}
@@ -175,8 +178,9 @@ function handleInput(p, msg) {
 // ---- Players ----
 function addPlayer(id, name) {
   const color = PLAYER_COLORS[players.size % PLAYER_COLORS.length];
+  const pattern = TRAIL_PATTERNS[players.size % TRAIL_PATTERNS.length];
   players.set(id, {
-    id, name, color, score: 0, ready: false,
+    id, name, color, pattern, score: 0, ready: false,
     cursor: { x: W / 2, y: H / 2 }, prev: { x: W / 2, y: H / 2 },
     trail: [], pc: null, dc: null,
   });
@@ -405,6 +409,69 @@ function updateParticles(dt) {
   }
 }
 
+// ---- Trails: one visual pattern per player ----
+function drawTrail(p, pts, nowT) {
+  const dpr = devicePixelRatio;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const segment = (i, width) => {
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+    ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  };
+
+  for (let i = 1; i < pts.length; i++) {
+    const age = (nowT - pts[i].t) / 250; // 0 fresh → 1 gone
+    const fade = 1 - age;
+
+    switch (p.pattern) {
+      case 'glow':
+        ctx.save();
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 18 * dpr * fade;
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = fade;
+        segment(i, (8 - 6 * age) * dpr);
+        ctx.restore();
+        break;
+
+      case 'dashed':
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = fade;
+        ctx.setLineDash([10 * dpr, 8 * dpr]);
+        segment(i, (9 - 7 * age) * dpr);
+        ctx.setLineDash([]);
+        break;
+
+      case 'dots':
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = fade;
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, (6 - 4 * age) * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      case 'core': // colored blade with a bright white center line
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = fade;
+        segment(i, (12 - 9 * age) * dpr);
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = fade * 0.9;
+        segment(i, (4 - 3 * age) * dpr);
+        break;
+
+      default: // solid
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = fade;
+        segment(i, (10 - 8 * age) * dpr);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 // ---- Render ----
 let lastT = performance.now();
 function frame(now) {
@@ -511,21 +578,7 @@ function frame(now) {
   const nowT = performance.now();
   for (const p of players.values()) {
     const pts = p.trail.filter(q => nowT - q.t < 250);
-    if (pts.length > 1) {
-      ctx.strokeStyle = p.color;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      for (let i = 1; i < pts.length; i++) {
-        const age = (nowT - pts[i].t) / 250;
-        ctx.globalAlpha = 1 - age;
-        ctx.lineWidth = (10 - 8 * age) * devicePixelRatio;
-        ctx.beginPath();
-        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
-        ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
+    if (pts.length > 1) drawTrail(p, pts, nowT);
     // cursor dot
     ctx.fillStyle = p.color;
     ctx.beginPath();
