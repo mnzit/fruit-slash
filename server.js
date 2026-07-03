@@ -126,6 +126,20 @@ wss.on('connection', (ws) => {
       if (!room) return;
       const target = ws.meta.role === 'screen' ? room.controllers.get(msg.to) : room.screen;
       send(target, { type: 'signal', from: ws.meta.id, data: msg.data });
+
+    } else if (msg.type === 'input') {
+      // Fallback game-input path when the WebRTC data channel can't connect
+      // (e.g. routers with client isolation): controller -> screen.
+      const room = rooms.get(ws.meta.room);
+      if (room && ws.meta.role === 'controller') {
+        send(room.screen, { type: 'input', from: ws.meta.id, data: msg.data });
+      }
+    } else if (msg.type === 'feedback') {
+      // screen -> controller (vibration cues etc.) on the fallback path.
+      const room = rooms.get(ws.meta.room);
+      if (room && ws.meta.role === 'screen') {
+        send(room.controllers.get(msg.to), { type: 'feedback', data: msg.data });
+      }
     }
   });
 

@@ -84,6 +84,10 @@ function connectSignaling() {
       removePlayer(msg.id);
     } else if (msg.type === 'signal') {
       await handleSignal(msg.from, msg.data);
+    } else if (msg.type === 'input') {
+      // Relay fallback: game input arriving via the server instead of WebRTC.
+      const p = players.get(msg.from);
+      if (p) handleInput(p, msg.data);
     }
   };
   ws.onclose = () => setTimeout(connectSignaling, 2000);
@@ -220,7 +224,11 @@ document.getElementById('start').addEventListener('click', () => {
 });
 
 function send(p, msg) {
-  if (p.dc && p.dc.readyState === 'open') p.dc.send(JSON.stringify(msg));
+  if (p.dc && p.dc.readyState === 'open') {
+    p.dc.send(JSON.stringify(msg));
+  } else if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'feedback', to: p.id, data: msg }));
+  }
 }
 
 // ---- Fruits ----

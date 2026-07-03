@@ -14,6 +14,7 @@ if (params.get('room')) $('room').value = params.get('room').toUpperCase();
 
 let ws = null, pc = null, dc = null;
 let touchMode = false;
+let relayMode = false; // ship input via the server when WebRTC can't connect
 
 // ---- Keep the phone screen awake while playing ----
 let wakeLock = null;
@@ -48,6 +49,8 @@ $('join').addEventListener('click', () => {
     } else if (msg.type === 'signal') {
       if (msg.data.sdp) await pc.setRemoteDescription(msg.data.sdp);
       else if (msg.data.candidate) { try { await pc.addIceCandidate(msg.data.candidate); } catch {} }
+    } else if (msg.type === 'feedback') {
+      handleFeedback(msg.data);
     } else if (msg.type === 'room-closed') {
       $('status').textContent = 'Screen closed the room.';
       show('join-screen');
@@ -58,30 +61,60 @@ $('join').addEventListener('click', () => {
 
 // ---- WebRTC (controller makes the offer) ----
 async function startWebRTC() {
+  $('status').textContent = 'Joined — linking with screen…';
   pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  // Surface the live connection state so a stall is diagnosable, not silent.
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') {
+      $('status').textContent = 'Direct link failed — is the phone on the SAME Wi-Fi as the screen (not mobile data)?';
+    } else if (pc.connectionState !== 'connected') {
+      $('status').textContent = `Linking with screen… (${pc.connectionState})`;
+    }
+  };
   // Low-latency: unordered, no retransmits — a lost cursor sample doesn't matter.
   dc = pc.createDataChannel('input', { ordered: false, maxRetransmits: 0 });
   dc.onopen = () => {
     $('status').textContent = '';
     show('calibrate-screen');
   };
-  dc.onmessage = (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.t === 'slice' && navigator.vibrate) navigator.vibrate(30);
-    if (msg.t === 'bomb') {
-      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-      document.body.classList.remove('flash-red');
-      void document.body.offsetWidth;
-      document.body.classList.add('flash-red');
-    }
-    if (msg.t === 'start') $('hint').textContent = 'Swing your phone to slice! 🍉';
-  };
+  dc.onmessage = (ev) => handleFeedback(JSON.parse(ev.data));
   pc.onicecandidate = (e) => {
     if (e.candidate) ws.send(JSON.stringify({ type: 'signal', data: { candidate: e.candidate } }));
   };
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   ws.send(JSON.stringify({ type: 'signal', data: { sdp: pc.localDescription } }));
+
+  // If the direct link hasn't opened in 5s (e.g. router blocks device-to-device
+  // traffic), fall back to relaying input through the server. A few ms slower
+  // on a LAN — imperceptible.
+  setTimeout(() => {
+    if (dc && dc.readyState === 'open') return;
+    relayMode = true;
+    $('status').textContent = '';
+    show('calibrate-screen');
+  }, 5000);
+}
+
+function handleFeedback(msg) {
+  if (msg.t === 'slice' && navigator.vibrate) navigator.vibrate(30);
+  if (msg.t === 'bomb') {
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+    document.body.classList.remove('flash-red');
+    void document.body.offsetWidth;
+    document.body.classList.add('flash-red');
+  }
+  if (msg.t === 'start') $('hint').textContent = 'Swing your phone to slice! 🍉';
+}
+
+// Send a game message to the screen: direct data channel when available,
+// otherwise via the server relay.
+function sendGame(msg) {
+  if (dc && dc.readyState === 'open') {
+    dc.send(JSON.stringify(msg));
+  } else if (relayMode && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'input', data: msg }));
+  }
 }
 
 // ---- Motion pointing model: KNIFE GRIP (direct, no filtering) ----
@@ -141,9 +174,7 @@ function onOrientation(e) {
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
 function sendMove(x, y) {
-  if (dc && dc.readyState === 'open') {
-    dc.send(JSON.stringify({ t: 'move', x: +x.toFixed(4), y: +y.toFixed(4) }));
-  }
+  sendGame({ t: 'move', x: +x.toFixed(4), y: +y.toFixed(4) });
 }
 
 async function requestMotionPermission() {
@@ -170,7 +201,7 @@ $('calibrate').addEventListener('click', async () => {
       return;
     }
     cal = { ...lastOri };
-    if (dc?.readyState === 'open') dc.send(JSON.stringify({ t: 'ready' }));
+    sendGame({ t: 'ready' });
     show('play-screen');
   }, 300);
 });
@@ -200,7 +231,7 @@ $('touch-mode').addEventListener('click', () => {
   $('hint').textContent = 'Drag on your phone to slice! 🍉';
   $('recenter').style.display = 'none';
   $('subhint').style.display = 'none';
-  if (dc?.readyState === 'open') dc.send(JSON.stringify({ t: 'ready' }));
+  sendGame({ t: 'ready' });
   show('play-screen');
 });
 
