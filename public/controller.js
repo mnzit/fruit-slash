@@ -96,6 +96,8 @@ async function startWebRTC() {
   }, 5000);
 }
 
+let phase = 'play'; // 'play' | 'over' — drives what a tap means
+
 function handleFeedback(msg) {
   if (msg.t === 'slice' && navigator.vibrate) navigator.vibrate(30);
   if (msg.t === 'bomb') {
@@ -104,7 +106,14 @@ function handleFeedback(msg) {
     void document.body.offsetWidth;
     document.body.classList.add('flash-red');
   }
-  if (msg.t === 'start') $('hint').textContent = 'Swing your phone to slice! 🍉';
+  if (msg.t === 'start') {
+    phase = 'play';
+    $('hint').textContent = 'Swing your phone to slice! 🍉';
+  }
+  if (msg.t === 'over') {
+    phase = 'over';
+    $('hint').textContent = 'Point at PLAY AGAIN and tap 👆';
+  }
 }
 
 // Send a game message to the screen: direct data channel when available,
@@ -217,12 +226,18 @@ function recenter() {
 
 $('recenter').addEventListener('click', recenter);
 
-// Tap anywhere on the play screen while aiming at the on-screen ✛ to re-center.
+// Tap anywhere on the play screen: during play it re-centers aim; on the
+// game-over screen it "clicks" whatever the cursor is pointing at.
 document.addEventListener('pointerdown', (e) => {
   if (touchMode) return;
   if (!$('play-screen').classList.contains('active')) return;
   if (e.target.tagName === 'BUTTON') return;
-  recenter();
+  if (phase === 'over') {
+    sendGame({ t: 'tap' });
+    if (navigator.vibrate) navigator.vibrate(15);
+  } else {
+    recenter();
+  }
 });
 
 // ---- Touch fallback: drag anywhere on the play screen ----

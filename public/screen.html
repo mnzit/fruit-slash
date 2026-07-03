@@ -39,6 +39,12 @@
   button#again {
     font-size: 26px; font-weight: 800; padding: 14px 46px; border: none; border-radius: 12px;
     background: #4ade80; color: #08210f; cursor: pointer;
+    transition: transform 0.12s, background 0.12s;
+  }
+  button#again.hover { background: #86efac; transform: scale(1.12); box-shadow: 0 0 24px rgba(74,222,128,0.6); }
+  .cursor-dot {
+    position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    border: 3px solid #fff; transform: translate(-50%, -50%); pointer-events: none;
   }
 </style>
 </head>

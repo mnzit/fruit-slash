@@ -169,10 +169,22 @@ function handleInput(p, msg) {
     p.trail.push({ ...p.cursor, t: performance.now() });
     if (p.trail.length > 24) p.trail.shift();
     if (gameRunning) checkSlices(p, p.prev, p.cursor);
+  } else if (msg.t === 'tap') {
+    // On the game-over screen, a phone tap "clicks" whatever the cursor hovers.
+    if (document.getElementById('gameover').classList.contains('active') &&
+        cursorOverButton(p, document.getElementById('again'))) {
+      document.getElementById('again').click();
+    }
   } else if (msg.t === 'ready') {
     p.ready = true;
     updateLobby();
   }
+}
+
+function cursorOverButton(p, btn) {
+  const r = btn.getBoundingClientRect();
+  const x = p.cursor.x / devicePixelRatio, y = p.cursor.y / devicePixelRatio;
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
 // ---- Players ----
@@ -190,6 +202,7 @@ function addPlayer(id, name) {
 function removePlayer(id) {
   const p = players.get(id);
   if (p?.pc) p.pc.close();
+  if (p?.dotEl) p.dotEl.remove();
   players.delete(id);
   updateLobby();
 }
@@ -386,6 +399,28 @@ function gameOver(title, subtitle) {
     list.appendChild(row);
   });
   document.getElementById('gameover').classList.add('active');
+  for (const p of players.values()) send(p, { t: 'over' });
+}
+
+// While the game-over overlay is up, mirror each player's cursor as a DOM dot
+// above it so they can aim at the Play Again button.
+function updateOverlayCursors() {
+  const over = document.getElementById('gameover');
+  const btn = document.getElementById('again');
+  if (!over.classList.contains('active')) return;
+  let anyHover = false;
+  for (const p of players.values()) {
+    if (!p.dotEl) {
+      p.dotEl = document.createElement('div');
+      p.dotEl.className = 'cursor-dot';
+      p.dotEl.style.background = p.color;
+      over.appendChild(p.dotEl);
+    }
+    p.dotEl.style.left = p.cursor.x / devicePixelRatio + 'px';
+    p.dotEl.style.top = p.cursor.y / devicePixelRatio + 'px';
+    if (cursorOverButton(p, btn)) anyHover = true;
+  }
+  btn.classList.toggle('hover', anyHover);
 }
 
 document.getElementById('again').addEventListener('click', () => {
@@ -395,6 +430,10 @@ document.getElementById('again').addEventListener('click', () => {
   popups.length = 0;
   spawnTimer = 800;
   document.getElementById('gameover').classList.remove('active');
+  document.getElementById('again').classList.remove('hover');
+  for (const p of players.values()) {
+    if (p.dotEl) { p.dotEl.remove(); p.dotEl = null; }
+  }
   beginRound();
 });
 
@@ -592,6 +631,8 @@ function frame(now) {
   // vignette darkens the edges so the action pops
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
+
+  updateOverlayCursors();
 
   // HUD: countdown, frenzy banner, slow-mo tint
   if (gameRunning) {
